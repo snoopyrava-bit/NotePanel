@@ -817,8 +817,6 @@ async function startApp() {
   document.getElementById('today-lbl').textContent = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
   setInterval(updateTimers, 1000);
   setInterval(silentTokenRefresh, 60000);
-  // Периодический синк каждые 5 минут
-  setInterval(() => { if (AUTH.token && AUTH.driveOk && !AUTH.syncing) fullSync(); }, 5 * 60 * 1000);
 
 function silentTokenRefresh() {
   if (!AUTH.user) return;
