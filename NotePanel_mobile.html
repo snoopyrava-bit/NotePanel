@@ -681,9 +681,15 @@ select.form-inp { appearance: none; }
         <label class="form-lbl">Описание</label>
         <input type="text" class="form-inp" id="tf-text" placeholder="Что нужно сделать...">
       </div>
-      <div class="form-group">
-        <label class="form-lbl">Время (необязательно)</label>
-        <input type="time" class="form-inp" id="tf-time">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-lbl">Дата</label>
+          <input type="date" class="form-inp" id="tf-date">
+        </div>
+        <div class="form-group">
+          <label class="form-lbl">Время (необязательно)</label>
+          <input type="time" class="form-inp" id="tf-time">
+        </div>
       </div>
     </div>
 
@@ -1164,7 +1170,13 @@ let _modalMode = 'note';
 function openAddModal() {
   document.getElementById('modal-edit-id').value='';
   if(_activeTab==='notes'){document.getElementById('modal-title').textContent='Новая заметка';document.getElementById('nf-title').value='';document.getElementById('nf-content').value='';document.getElementById('nf-dl-date').value='';document.getElementById('nf-dl-time').value='';selCat('r',document.querySelector('.csg-opt[data-cat="r"]'));showNoteFields();}
-  else if(_activeTab==='tasks'){document.getElementById('modal-title').textContent='Новое дело';document.getElementById('tf-text').value='';document.getElementById('tf-time').value='';showTaskFields();}
+  else if(_activeTab==='tasks'){
+    document.getElementById('modal-title').textContent='Новое дело';
+    document.getElementById('tf-text').value='';
+    document.getElementById('tf-time').value='';
+    document.getElementById('tf-date').value=new Date().toISOString().split('T')[0];
+    showTaskFields();
+  }
   else if(_activeTab==='deadlines'){document.getElementById('modal-title').textContent='Новый дедлайн';document.getElementById('df-title').value='';document.getElementById('df-date').value='';document.getElementById('df-time').value='';document.getElementById('df-repeat').value='';document.getElementById('df-remind').value='';showDlFields();}
   openModal('add-modal');
 }
@@ -1188,7 +1200,8 @@ function saveModal() {
     save();renderNotes();closeModal('add-modal');toast(editId?'Обновлено':'Заметка добавлена');
   } else if(_modalMode==='task'){
     const text=document.getElementById('tf-text').value.trim(); if(!text){toast('Введите описание');return;}
-    S.tasks.push({id:uid(),text,time:document.getElementById('tf-time').value,status:'todo',created:Date.now()});
+    const taskDate=document.getElementById('tf-date').value||new Date().toISOString().split('T')[0];
+    S.tasks.push({id:uid(),text,time:document.getElementById('tf-time').value,date:taskDate,status:'todo',created:Date.now()});
     save();logHistory('create','task',text);renderTasks();closeModal('add-modal');toast('Дело добавлено');
   } else if(_modalMode==='dl'){
     const title=document.getElementById('df-title').value.trim();
