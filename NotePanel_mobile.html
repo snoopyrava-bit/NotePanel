@@ -817,6 +817,8 @@ async function startApp() {
   document.getElementById('today-lbl').textContent = new Date().toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
   setInterval(updateTimers, 1000);
   setInterval(silentTokenRefresh, 60000);
+  // Периодический синк каждые 5 минут
+  setInterval(() => { if (AUTH.token && AUTH.driveOk && !AUTH.syncing) fullSync(); }, 5 * 60 * 1000);
 
 function silentTokenRefresh() {
   if (!AUTH.user) return;
@@ -989,7 +991,7 @@ function filterNotes(q) { _q=q.toLowerCase(); renderNotes(); }
 function setCat(c,el) { _cat=c; document.querySelectorAll('.cat-chip').forEach(x=>x.classList.remove('on')); el.classList.add('on'); renderNotes(); }
 
 function renderNotes() {
-  let notes=S.notes;
+  let notes=S.notes.filter(n => !n.deleted);
   if(_cat!=='all') notes=notes.filter(n=>n.cat===_cat);
   if(_q) notes=notes.filter(n=>n.title.toLowerCase().includes(_q)||(n.content||'').toLowerCase().includes(_q));
   const el=document.getElementById('notes-list');
@@ -1047,15 +1049,20 @@ function editNoteForm() {
 // ===== TASKS =====
 function renderTasks() {
   const el=document.getElementById('tasks-list');
-  const tasks=S.tasks.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
+  const today=new Date().toISOString().split('T')[0];
+  const tasks=S.tasks
+    .filter(t => !t.deleted && (!t.date || t.date <= today))
+    .sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
   if(!tasks.length){el.innerHTML='<div class="empty"><div class="empty-icon">—</div><div class="empty-text">Нет дел на сегодня</div></div>';return;}
   el.innerHTML=tasks.map(t=>{
     const cc=t.status==='done'?'done':t.status==='progress'?'progress':t.status==='repeat'?'repeat':'';
     const ic=t.status==='done'?'✓':t.status==='repeat'?'↻':'';
+    const isOverdue = t.date && t.date < today;
+    const overdueTag = isOverdue ? `<span style="font-size:10px;color:#c0392b;background:rgba(192,57,43,0.09);padding:1px 6px;border-radius:3px;margin-left:6px;">просрочено</span>` : '';
     return `<div class="task-item" onclick="openStatusSheet('${t.id}')">
       <div class="task-circle ${cc}">${ic}</div>
       <div class="task-body">
-        <div class="task-text ${t.status==='done'?'done':''}">${esc(t.text)}</div>
+        <div class="task-text ${t.status==='done'?'done':''}">${esc(t.text)}${overdueTag}</div>
         ${t.time?`<div class="task-time-badge">🕐 ${t.time}</div>`:''}
       </div>
     </div>`;
@@ -1074,8 +1081,8 @@ function closeStatusSheet() { document.getElementById('status-sheet').classList.
 function setTaskStatus(status) {
   const id=S.statusTaskId;
   const t=S.tasks.find(x=>x.id===id); if(!t)return;
-  if(status==='cancel'){S.tasks=S.tasks.filter(x=>x.id!==id);save();renderTasks();closeStatusSheet();toast('Дело удалено');return;}
-  if(status==='done'){S.completed.push({...t,completedAt:Date.now(),finalStatus:'done'});S.tasks=S.tasks.filter(x=>x.id!==id);save();logHistory('update','task',t.text);renderTasks();closeStatusSheet();toast('✓ Готово!');return;}
+  if(status==='cancel'){t.deleted=true;t.updated=Date.now();save();scheduleSync();renderTasks();closeStatusSheet();toast('Дело удалено');return;}
+  if(status==='done'){S.completed.push({...t,completedAt:Date.now(),finalStatus:'done'});t.deleted=true;t.updated=Date.now();save();logHistory('update','task',t.text);scheduleSync();renderTasks();closeStatusSheet();toast('✓ Готово!');return;}
   if(status==='repeat'){document.getElementById('repeat-form').classList.add('open');t.status='repeat';save();renderTasks();return;}
   t.status=status; save(); renderTasks(); closeStatusSheet();
 }
@@ -1103,8 +1110,9 @@ function openCompleted() {
 // ===== DEADLINES =====
 function renderDeadlines() {
   const el=document.getElementById('dl-list');
-  if(!S.deadlines.length){el.innerHTML='<div class="empty"><div class="empty-icon">—</div><div class="empty-text">Нет дедлайнов</div></div>';return;}
-  const sorted=[...S.deadlines].sort((a,b)=>nextDl(a)-nextDl(b));
+  const active=S.deadlines.filter(d=>!d.deleted);
+  if(!active.length){el.innerHTML='<div class="empty"><div class="empty-icon">—</div><div class="empty-text">Нет дедлайнов</div></div>';return;}
+  const sorted=[...active].sort((a,b)=>nextDl(a)-nextDl(b));
   el.innerHTML=sorted.map(d=>{
     const next=nextDl(d);
     const rem=next-Date.now();
