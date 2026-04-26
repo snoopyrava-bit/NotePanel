@@ -1,0 +1,25 @@
+{
+  "name": "NotePanel by RA",
+  "short_name": "NotePanel",
+  "description": "Заметки, задачи и дедлайны с синхронизацией через Google Drive",
+  "start_url": "/NotePanel_mobile.html",
+  "display": "standalone",
+  "background_color": "#faf8f4",
+  "theme_color": "#faf8f4",
+  "orientation": "portrait",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
